@@ -1,0 +1,16 @@
+# 数据 (太大，不上传)
+data/
+
+# 模型权重
+models/*.pth
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# 日志
+logs/*.png
+
+# 系统文件
+.DS_Store
