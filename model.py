@@ -74,12 +74,28 @@ class OrganoidSubtypeClassifier(nn.Module):
         self.classifier = nn.Sequential(
             nn.Dropout(dropout),
             nn.Linear(self.feature_dim, 512),
-            nn.BatchNorm1d(512),
+            nn.LayerNorm(512),          # LayerNorm 不会因 batch=1 报错
             nn.ReLU(inplace=True),
             nn.Dropout(dropout),
             nn.Linear(512, num_classes),
         )
         self._init_classifier()
+
+        # ---- 冻结浅层 ----
+        self._freeze_stages(freeze_stages)
+
+    def _freeze_stages(self, n):
+        """冻结 backbone 浅层"""
+        if n <= 0:
+            return
+        blocks = getattr(self.backbone, "features", None)
+        if blocks is None:
+            return
+        # convnext/efficientnet 的 features 是一个 Sequential
+        children = list(blocks.children())
+        for i in range(min(n, len(children))):
+            for p in children[i].parameters():
+                p.requires_grad = False
 
     def _init_classifier(self):
         for m in self.classifier.modules():
@@ -87,7 +103,7 @@ class OrganoidSubtypeClassifier(nn.Module):
                 nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm1d):
+            elif isinstance(m, (nn.BatchNorm1d, nn.LayerNorm)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 

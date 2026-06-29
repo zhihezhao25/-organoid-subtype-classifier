@@ -21,12 +21,12 @@ IMAGE_DIR = DATA_DIR / "imgs"
 MASK_DIR = DATA_DIR / "labels"
 
 # ===== 图像处理 =====
-IMAGE_SIZE = 224          # 输入分辨率
+IMAGE_SIZE = 384          # 输入分辨率 (224→384，捕捉更多形态细节)
 CROP_MARGIN = 20          # 从mask bbox向外扩展的像素数
 MIN_ORGANOID_AREA = 500   # 过滤太小的碎片 (像素)
 
 # ===== 训练 =====
-BATCH_SIZE = 32
+BATCH_SIZE = 16  # 384分辨率吃内存，降到16
 NUM_EPOCHS = 50
 LEARNING_RATE = 1e-4
 WEIGHT_DECAY = 1e-4
@@ -34,9 +34,9 @@ NUM_WORKERS = 0  # MPS 上多进程有问题，设 0
 SEED = 42
 
 # ===== 模型 =====
-BACKBONE = "efficientnet_b3"  # 可选: resnet50, convnext_tiny, efficientnet-b0/b1/b3
-DROPOUT = 0.3
-FREEZE_STAGES = 3             # 冻结 EfficientNet 前几个 stage
+BACKBONE = "convnext_tiny"  # 可选: resnet50, efficientnet_b0/b3, convnext_tiny
+DROPOUT = 0.4
+FREEZE_STAGES = 0             # 解冻所有层，充分训练
 
 # ===== 硬件 =====
 DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
