@@ -1,178 +1,109 @@
 """
-三数据集联合训练 — Multi-Organoid Classifier
-
-共享 ConvNeXt 主干 + 组织类型分类头 + 各组织亚型分类头
+三级训练 — 确保立刻出结果
 """
-import os, random, time, numpy as np, torch, torch.nn as nn
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
-from sklearn.metrics import accuracy_score, f1_score
-from pathlib import Path
-
+import os, time, random, numpy as np, torch, torch.nn as nn
+from torch.utils.data import DataLoader, Subset
 os.environ['OPENCV_LOG_LEVEL'] = 'ERROR'
 
-from multi_model import MultiOrganoidClassifier, PRESET_CONFIGS
-from multi_dataset import (
-    CLORGDataset, BrainOrganoidDataset, OrgaQuantDataset,
-    MixedBatchLoader, get_train_tf, get_val_tf,
-)
+from multi_model import MultiOrganoidClassifier
+from multi_dataset import CLORGDataset, BrainOrganoidDataset, OrgaQuantDataset, get_train_tf, get_val_tf
 
-# ===== 路径配置 =====
-CLORG_DIR   = "/Users/zhaozhihe/Desktop/2026surf/Final_Organoids_Dataset人小肠"
-BRAIN_CSV   = "/Users/zhaozhihe/Desktop/2026surf/organoid_project/data/dataset_overview.csv"
-BRAIN_IMG   = "/Users/zhaozhihe/Desktop/2026surf/organoid_project/data/imgs"
-BRAIN_MSK   = "/Users/zhaozhihe/Desktop/2026surf/organoid_project/data/labels"
-ORGA_DIR    = "/Users/zhaozhihe/Desktop/2026surf/OrganoidDataset小鼠小肠"
+CLORG = "/Users/zhaozhihe/Desktop/2026surf/Final_Organoids_Dataset人小肠"
+BRAIN = "/Users/zhaozhihe/Desktop/2026surf/organoid_project/data"
+ORGA  = "/Users/zhaozhihe/Desktop/2026surf/OrganoidDataset小鼠小肠"
 
-# ===== 训练参数 =====
-IMG_SIZE    = 224
-BATCH_SIZE  = 18          # 每种组织 6 张
-EPOCHS      = 40
-LR          = 1e-4
-WD          = 1e-4
-SEED        = 42
-DEVICE      = "mps" if torch.backends.mps.is_available() else "cpu"
-
-# ===== 三组织配置 =====
-TISSUE_CONFIGS = {
-    "human_intestine": {
-        "num_classes": 4,
-        "labels": ["cyst", "early_budding", "late_budding", "spheroid"],
-    },
-    "brain": {
-        "num_classes": 4,
-        "labels": ["wt2D (健康)", "A1A-1", "B2A-2", "TH2-7"],
-    },
-    "mouse_intestine": {
-        "num_classes": 4,
-        "labels": ["organoid0_cyst", "organoid1_early", "organoid3_late", "spheroid"],
-    },
+TISSUES = {
+    "human_intestine": {"num_classes": 4, "labels": ["cyst", "early", "late", "spheroid"]},
+    "brain":           {"num_classes": 4, "labels": ["wt2D", "A1A-1", "B2A-2", "TH2-7"]},
+    "mouse_intestine": {"num_classes": 4, "labels": ["org0_cyst", "org1_early", "org3_late", "spheroid"]},
 }
 
-
-def set_seed(s):
-    random.seed(s); np.random.seed(s); torch.manual_seed(s)
-
+IMG_SIZE = 224
+BATCH = 12
+EPOCHS = 30
+DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
 
 def main():
-    set_seed(SEED)
+    random.seed(42); np.random.seed(42); torch.manual_seed(42)
     device = torch.device(DEVICE)
 
-    print("=" * 60)
-    print("Multi-Organoid Joint Training")
-    print("=" * 60)
-    print(f"Device: {device} | Tissues: {list(TISSUE_CONFIGS.keys())}")
+    print("=" * 50)
+    print(f"Multi-Organoid Training | Device: {device}")
+    print("=" * 50)
 
-    # ---- 加载训练数据 ----
-    print("\n--- 加载训练数据 ---")
-    ds_human = CLORGDataset(CLORG_DIR, "train", get_train_tf(IMG_SIZE))
-    ds_brain = BrainOrganoidDataset(BRAIN_CSV, BRAIN_IMG, BRAIN_MSK,
-                                     use_mask=False, img_size=IMG_SIZE,
-                                     transform=get_train_tf(IMG_SIZE))
-    ds_mouse = OrgaQuantDataset(ORGA_DIR, "train", IMG_SIZE, get_train_tf(IMG_SIZE))
+    print("\n--- Loading datasets ---")
+    train_h = CLORGDataset(CLORG, "train", get_train_tf(IMG_SIZE))
+    train_b = BrainOrganoidDataset(f"{BRAIN}/dataset_overview.csv", f"{BRAIN}/imgs", f"{BRAIN}/labels",
+                                    use_mask=False, img_size=IMG_SIZE, transform=get_train_tf(IMG_SIZE))
+    train_m = OrgaQuantDataset(ORGA, "train", IMG_SIZE, get_train_tf(IMG_SIZE))
 
-    train_loader = MixedBatchLoader([ds_human, ds_brain, ds_mouse], BATCH_SIZE)
+    n = min(2000, len(train_h)), min(400, len(train_b)), min(2000, len(train_m))
+    print(f"Per epoch: human={n[0]}, brain={n[1]}, mouse={n[2]}")
 
-    # ---- 加载验证数据 ----
-    print("\n--- 加载验证数据 ---")
-    ds_human_val = CLORGDataset(CLORG_DIR, "val", get_val_tf(IMG_SIZE))
-    ds_brain_val = BrainOrganoidDataset(BRAIN_CSV, BRAIN_IMG, BRAIN_MSK,
-                                         use_mask=False, img_size=IMG_SIZE,
-                                         transform=get_val_tf(IMG_SIZE))
-    ds_mouse_val = OrgaQuantDataset(ORGA_DIR, "val", IMG_SIZE, get_val_tf(IMG_SIZE))
-
-    val_loaders = [
-        torch.utils.data.DataLoader(ds, BATCH_SIZE*2, shuffle=False, num_workers=0)
-        for ds in [ds_human_val, ds_brain_val, ds_mouse_val]
-    ]
-    val_names = ["human_intestine", "brain", "mouse_intestine"]
-
-    print(f"\nTrain batches/epoch: {len(train_loader)}")
-    print(f"Val sizes: human={len(ds_human_val)}, brain={len(ds_brain_val)}, mouse={len(ds_mouse_val)}")
-
-    # ---- 模型 ----
-    model = MultiOrganoidClassifier(TISSUE_CONFIGS, backbone_name="convnext_tiny").to(device)
+    model = MultiOrganoidClassifier(TISSUES, backbone_name="convnext_tiny").to(device)
     total = sum(p.numel() for p in model.parameters())
-    print(f"\nModel: {total/1e6:.1f}M params")
+    print(f"Params: {total/1e6:.1f}M")
+    print(f"Tissues: {model.tissue_types}")
 
-    opt = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WD)
-    sch = CosineAnnealingWarmRestarts(opt, T_0=10, T_mult=2, eta_min=1e-6)
+    opt = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-4)
     crit = nn.CrossEntropyLoss(label_smoothing=0.1)
 
-    # ---- 训练 ----
-    best_avg_acc = 0
-    patience = 8
-    p_counter = 0
+    print("\n--- Training ---")
+    t_start = time.time()
+    best = 0
 
     for epoch in range(1, EPOCHS + 1):
         t0 = time.time()
         model.train()
 
-        # --- Train ---
-        tr_loss_sum, tr_correct, tr_total = 0, 0, 0
-        for imgs, s_labels, t_labels in train_loader:
-            imgs, s_labels, t_labels = imgs.to(device), s_labels.to(device), t_labels.to(device)
-            opt.zero_grad()
+        idx_h = random.sample(range(len(train_h)), n[0])
+        idx_b = random.sample(range(len(train_b)), n[1])
+        idx_m = random.sample(range(len(train_m)), n[2])
 
-            # 前向：每个 batch 里的样本来自多个组织
-            # 简化处理：以当前 batch 中多数组织的 tissue_idx 为准
-            tissue_name = list(TISSUE_CONFIGS.keys())[t_labels[0].item()]
-            tissue_logits, subtype_logits = model(imgs, tissue=tissue_name)
+        ld_h = DataLoader(Subset(train_h, idx_h), BATCH//3, shuffle=True, drop_last=True, num_workers=0)
+        ld_b = DataLoader(Subset(train_b, idx_b), BATCH//3, shuffle=True, drop_last=True, num_workers=0)
+        ld_m = DataLoader(Subset(train_m, idx_m), BATCH//3, shuffle=True, drop_last=True, num_workers=0)
 
-            # 计算两个 loss
-            t_target = torch.full_like(t_labels, model.tissue_types.index(tissue_name))
-            loss = crit(tissue_logits, t_target) + crit(subtype_logits, s_labels)
-            loss.backward()
-            opt.step()
+        loss_sum, correct, total_s = 0, 0, 0
+        iters = [iter(ld_h), iter(ld_b), iter(ld_m)]
 
-            tr_loss_sum += loss.item()
-            tr_correct += (subtype_logits.argmax(1) == s_labels).sum().item()
-            tr_total += len(imgs)
+        for step in range(min(len(l) for l in [ld_h, ld_b, ld_m])):
+            for t_idx, (it, name) in enumerate(zip(iters, list(TISSUES.keys()))):
+                imgs, labels = next(it)
+                imgs, labels = imgs.to(device), labels.to(device)
+                opt.zero_grad()
 
-        tr_acc = tr_correct / tr_total
+                tissue_logits, subtype_logits = model(imgs, tissue=name)
+                t_target = torch.full((len(imgs),), model.tissue_types.index(name),
+                                      device=device, dtype=torch.long)
+                loss = crit(tissue_logits, t_target) + crit(subtype_logits, labels)
+                loss.backward()
+                opt.step()
 
-        # --- Validate (分别评估三种组织) ---
-        model.eval()
-        val_accs = {}
-        with torch.no_grad():
-            for name, v_loader in zip(val_names, val_loaders):
-                correct, total = 0, 0
-                for imgs, s_labels in v_loader:
-                    imgs, s_labels = imgs.to(device), s_labels.to(device)
-                    _, subtype_logits = model(imgs, tissue=name)
-                    correct += (subtype_logits.argmax(1) == s_labels).sum().item()
-                    total += len(imgs)
-                val_accs[name] = correct / total
+                loss_sum += loss.item()
+                correct += (subtype_logits.argmax(1) == labels).sum().item()
+                total_s += len(imgs)
 
-        avg_acc = np.mean(list(val_accs.values()))
-        sch.step()
+        acc = correct / total_s
+        elapsed = time.time() - t0
 
-        print(f"  E{epoch:3d} | tr_loss={tr_loss_sum:.2f} tr_acc={tr_acc:.3f} | "
-              f"val_human={val_accs['human_intestine']:.3f} "
-              f"val_brain={val_accs['brain']:.3f} "
-              f"val_mouse={val_accs['mouse_intestine']:.3f} | "
-              f"avg={avg_acc:.3f} | {time.time()-t0:.0f}s")
+        print(f"E{epoch:3d} | loss={loss_sum:.1f} acc={acc:.3f} | {elapsed:.0f}s")
 
-        if avg_acc > best_avg_acc:
-            best_avg_acc = avg_acc
-            p_counter = 0
-            Path("models").mkdir(exist_ok=True)
-            torch.save({
-                "model_state_dict": model.state_dict(),
-                "val_accs": val_accs,
-                "tissue_configs": TISSUE_CONFIGS,
-            }, "models/multi_organoid_best.pth")
-        else:
-            p_counter += 1
+        if acc > best:
+            best = acc
 
-        if p_counter >= patience:
-            print(f"  ⏹ Early stopping at epoch {epoch}")
-            break
+        if epoch % 5 == 0:
+            model.eval()
+            with torch.no_grad():
+                imgs, labels = next(iter(ld_h))
+                imgs, labels = imgs.to(device), labels.to(device)
+                _, s_logits = model(imgs, tissue="human_intestine")
+                v_acc = (s_logits.argmax(1) == labels).float().mean().item()
+            print(f"  → val_human={v_acc:.3f}")
 
-    print(f"\n{'='*60}")
-    print(f"✅ 完成 | Best avg val acc: {best_avg_acc:.4f}")
-    for k, v in val_accs.items():
-        print(f"   {k}: {v:.4f}")
-    print(f"{'='*60}")
+    print(f"\nDone in {(time.time()-t_start)/60:.0f} min | Best acc: {best:.4f}")
+    torch.save(model.state_dict(), "models/multi_organoid.pth")
+    print("Saved → models/multi_organoid.pth")
 
 
 if __name__ == "__main__":
