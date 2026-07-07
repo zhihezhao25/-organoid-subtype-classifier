@@ -132,13 +132,14 @@ class OrganoidDataset(Dataset):
         else:
             image = cv2.cvtColor(cv2.imread(str(img_path)), cv2.COLOR_BGR2RGB)
 
-        # 用 mask 裁剪
-        mask_path = self.mask_dir / f"{img_id}.npy"
-        if mask_path.exists():
-            mask = (np.load(str(mask_path)) > 0.5).astype(np.uint8)
-            cropped = extract_organoid_roi(image, mask, margin=config.CROP_MARGIN)
-            if cropped is not None:
-                image = cropped
+        # 用 mask 裁剪（仅在 USE_MASK=True 时）
+        if config.USE_MASK:
+            mask_path = self.mask_dir / f"{img_id}.npy"
+            if mask_path.exists():
+                mask = (np.load(str(mask_path)) > 0.5).astype(np.uint8)
+                cropped = extract_organoid_roi(image, mask, margin=config.CROP_MARGIN)
+                if cropped is not None:
+                    image = cropped
 
         # 统一尺寸
         image = cv2.resize(image, (config.IMAGE_SIZE, config.IMAGE_SIZE))
