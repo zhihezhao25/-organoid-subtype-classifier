@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import torch
 from sklearn.model_selection import GroupKFold
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from torchvision import transforms
 from PIL import Image
 
@@ -247,7 +247,24 @@ def create_processed_loaders(train_df, val_df, batch_size=None):
     batch_size = batch_size or config.BATCH_SIZE
     train_ds = ProcessedDataset(train_df, get_train_transforms())
     val_ds = ProcessedDataset(val_df, get_val_transforms())
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=config.NUM_WORKERS, drop_last=True)
+
+    sampler = None
+    shuffle = True
+    if getattr(config, "USE_WEIGHTED_SAMPLER", False):
+        class_counts = train_df["label"].value_counts().sort_index()
+        class_weights = 1.0 / class_counts
+        sample_weights = train_df["label"].map(class_weights).to_numpy(dtype=np.float64)
+        sampler = WeightedRandomSampler(sample_weights, num_samples=len(sample_weights), replacement=True)
+        shuffle = False
+
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        sampler=sampler,
+        num_workers=config.NUM_WORKERS,
+        drop_last=True,
+    )
     val_loader = DataLoader(val_ds, batch_size=batch_size * 2, shuffle=False, num_workers=config.NUM_WORKERS)
     return train_loader, val_loader
 

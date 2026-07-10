@@ -29,6 +29,15 @@ WEIGHT_DECAY = 1e-4
 NUM_WORKERS = 0
 SEED = 42
 
+# ===== 提升泛化 =====
+USE_WEIGHTED_SAMPLER = True   # 类别不均衡时按类别均衡采样
+MIXUP_ALPHA = 0.2             # 0=关闭；小数据集推荐 0.1~0.4
+CUTMIX_ALPHA = 0.0            # 0=关闭；如过拟合可试 0.2~1.0
+MIX_PROB = 0.5                # 每个 batch 使用 MixUp/CutMix 的概率
+GRAD_CLIP_NORM = 1.0          # 0=关闭；防止微调时梯度爆炸
+EARLY_STOP_PATIENCE = 12
+SAVE_METRIC = "f1"           # "f1" 比 acc 更适合类别不均衡
+
 # ===== 模型 =====
 BACKBONE = "convnext_tiny"
 DROPOUT = 0.4

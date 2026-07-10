@@ -44,6 +44,10 @@ class MultiOrganoidClassifier(nn.Module):
             full = tv_models.convnext_tiny(weights=w)
             self.backbone = full.features
             self.feature_dim = 768
+        elif "mobilenet_v3_small" in backbone_name:
+            full = tv_models.mobilenet_v3_small(weights=None)
+            self.backbone = full.features
+            self.feature_dim = 576
         elif "efficientnet_b3" in backbone_name:
             w = tv_models.EfficientNet_B3_Weights.IMAGENET1K_V1
             full = tv_models.efficientnet_b3(weights=w)

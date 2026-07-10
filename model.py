@@ -88,11 +88,7 @@ class OrganoidSubtypeClassifier(nn.Module):
         """冻结 backbone 浅层"""
         if n <= 0:
             return
-        blocks = getattr(self.backbone, "features", None)
-        if blocks is None:
-            return
-        # convnext/efficientnet 的 features 是一个 Sequential
-        children = list(blocks.children())
+        children = list(self.backbone.children())
         for i in range(min(n, len(children))):
             for p in children[i].parameters():
                 p.requires_grad = False

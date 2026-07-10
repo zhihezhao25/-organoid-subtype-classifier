@@ -27,6 +27,38 @@ def set_seed(seed: int):
     torch.backends.cudnn.benchmark = False
 
 
+def mix_targets_loss(criterion, logits, labels_a, labels_b, lam):
+    return lam * criterion(logits, labels_a) + (1.0 - lam) * criterion(logits, labels_b)
+
+
+def mixup_batch(images, labels, alpha):
+    lam = np.random.beta(alpha, alpha)
+    index = torch.randperm(images.size(0), device=images.device)
+    mixed_images = lam * images + (1.0 - lam) * images[index]
+    return mixed_images, labels, labels[index], lam
+
+
+def cutmix_batch(images, labels, alpha):
+    lam = np.random.beta(alpha, alpha)
+    index = torch.randperm(images.size(0), device=images.device)
+    _, _, height, width = images.size()
+    cut_ratio = np.sqrt(1.0 - lam)
+    cut_w = int(width * cut_ratio)
+    cut_h = int(height * cut_ratio)
+    center_x = np.random.randint(width)
+    center_y = np.random.randint(height)
+
+    x1 = np.clip(center_x - cut_w // 2, 0, width)
+    y1 = np.clip(center_y - cut_h // 2, 0, height)
+    x2 = np.clip(center_x + cut_w // 2, 0, width)
+    y2 = np.clip(center_y + cut_h // 2, 0, height)
+
+    mixed_images = images.clone()
+    mixed_images[:, :, y1:y2, x1:x2] = images[index, :, y1:y2, x1:x2]
+    lam = 1.0 - ((x2 - x1) * (y2 - y1) / (width * height))
+    return mixed_images, labels, labels[index], lam
+
+
 def train_epoch(model, loader, optimizer, criterion, device):
     model.train()
     running_loss = 0.0
@@ -34,11 +66,27 @@ def train_epoch(model, loader, optimizer, criterion, device):
 
     for images, labels in loader:
         images, labels = images.to(device), labels.to(device)
-        optimizer.zero_grad()
+        optimizer.zero_grad(set_to_none=True)
 
-        logits = model(images)
-        loss = criterion(logits, labels)
+        use_mix = np.random.rand() < getattr(config, "MIX_PROB", 0.0)
+        use_cutmix = getattr(config, "CUTMIX_ALPHA", 0.0) > 0 and np.random.rand() < 0.5
+        use_mixup = getattr(config, "MIXUP_ALPHA", 0.0) > 0
+
+        if use_mix and use_cutmix:
+            mixed_images, labels_a, labels_b, lam = cutmix_batch(images, labels, config.CUTMIX_ALPHA)
+            logits = model(mixed_images)
+            loss = mix_targets_loss(criterion, logits, labels_a, labels_b, lam)
+        elif use_mix and use_mixup:
+            mixed_images, labels_a, labels_b, lam = mixup_batch(images, labels, config.MIXUP_ALPHA)
+            logits = model(mixed_images)
+            loss = mix_targets_loss(criterion, logits, labels_a, labels_b, lam)
+        else:
+            logits = model(images)
+            loss = criterion(logits, labels)
+
         loss.backward()
+        if getattr(config, "GRAD_CLIP_NORM", 0.0) > 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), config.GRAD_CLIP_NORM)
         optimizer.step()
 
         running_loss += loss.item() * images.size(0)
@@ -108,13 +156,21 @@ def train_one_fold(fold, train_df, val_df, clone_to_label):
     total, trainable = count_parameters(model)
     print(f"  Model: {config.BACKBONE} | {total/1e6:.1f}M params ({trainable/1e6:.1f}M trainable)")
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
+    optimizer = torch.optim.AdamW(
+        filter(lambda p: p.requires_grad, model.parameters()),
+        lr=config.LEARNING_RATE,
+        weight_decay=config.WEIGHT_DECAY,
+    )
     scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2, eta_min=1e-6)
     criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
 
+    best_score = -float("inf")
     best_val_acc = 0.0
+    best_val_f1 = 0.0
+    best_val_auc = float("nan")
+    best_val_labels, best_val_preds = [], []
     best_path = None
-    patience = 10
+    patience = config.EARLY_STOP_PATIENCE
     patience_counter = 0
 
     for epoch in range(1, config.NUM_EPOCHS + 1):
@@ -131,11 +187,18 @@ def train_one_fold(fold, train_df, val_df, clone_to_label):
             f"Train Loss: {train_loss:.4f} Acc: {train_acc:.4f} | "
             f"Val Loss: {val_loss:.4f} Acc: {val_acc:.4f} "
             f"F1: {val_f1:.4f} AUC: {val_auc:.4f} | "
+            f"LR: {scheduler.get_last_lr()[0]:.2e} | "
             f"{elapsed:.1f}s"
         )
 
-        if val_acc > best_val_acc:
+        monitor = val_f1 if config.SAVE_METRIC == "f1" else val_acc
+        if monitor > best_score:
+            best_score = monitor
             best_val_acc = val_acc
+            best_val_f1 = val_f1
+            best_val_auc = val_auc
+            best_val_labels = val_labels
+            best_val_preds = val_preds
             patience_counter = 0
             save_dir = Path(config.MODEL_DIR)
             save_dir.mkdir(parents=True, exist_ok=True)
@@ -147,6 +210,8 @@ def train_one_fold(fold, train_df, val_df, clone_to_label):
                 "val_acc": val_acc,
                 "val_f1": val_f1,
                 "val_auc": val_auc,
+                "save_metric": config.SAVE_METRIC,
+                "best_score": best_score,
                 "clone_to_label": clone_to_label,
                 "config": {"backbone": config.BACKBONE, "image_size": config.IMAGE_SIZE, "num_classes": num_classes},
             }, best_path)
@@ -158,8 +223,8 @@ def train_one_fold(fold, train_df, val_df, clone_to_label):
             break
 
     print(f"\n  ✅ Fold {fold+1} 最佳验证准确率: {best_val_acc:.4f}")
-    return {"fold": fold + 1, "best_val_acc": best_val_acc, "best_val_f1": val_f1,
-            "best_val_auc": val_auc, "model_path": best_path, "val_labels": val_labels, "val_preds": val_preds}
+    return {"fold": fold + 1, "best_val_acc": best_val_acc, "best_val_f1": best_val_f1,
+            "best_val_auc": best_val_auc, "model_path": best_path, "val_labels": best_val_labels, "val_preds": best_val_preds}
 
 
 def main():
