@@ -36,6 +36,8 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision import transforms
 
+from organoid_ontology import ORGANOID_ONTOLOGY, SOURCE_NOTES, export_csv, export_json
+
 ROOT = Path(__file__).resolve().parent
 CLORG = ROOT.parent / "Final_Organoids_Dataset人小肠"
 BRAIN = ROOT / "data"
@@ -336,6 +338,36 @@ def summarize_clusters(records, labels):
     return df, summary
 
 
+def suggest_ontology_terms(records, labels):
+    dataset_to_types = {
+        "human_intestine": {"intestinal", "colorectal_cancer", "general_morphology"},
+        "brain": {"brain", "retina", "general_morphology"},
+        "mouse_intestine": {"intestinal", "general_morphology"},
+    }
+    suggestions = {}
+    df = pd.DataFrame(records)
+    df["cluster"] = labels
+
+    for cluster, group in df.groupby("cluster"):
+        allowed_types = {"general_morphology"}
+        for dataset in group["dataset"].unique():
+            allowed_types.update(dataset_to_types.get(dataset, {dataset, "general_morphology"}))
+
+        cluster_terms = []
+        for term in ORGANOID_ONTOLOGY:
+            if term.organoid_type in allowed_types:
+                cluster_terms.append({
+                    "organoid_type": term.organoid_type,
+                    "subtype": term.subtype,
+                    "category": term.category,
+                    "visual_features": list(term.visual_features),
+                    "synonyms": list(term.synonyms),
+                    "caution": term.caution,
+                })
+        suggestions[str(int(cluster))] = cluster_terms[:16]
+    return suggestions
+
+
 def compute_quality(reduced, labels):
     valid_mask = labels != -1
     unique = set(labels[valid_mask])
@@ -414,10 +446,14 @@ def main():
         "num_clusters_excluding_noise": len([x for x in set(labels) if x != -1]),
         "noise_count": int((labels == -1).sum()),
         "quality": quality,
+        "ontology_notes": SOURCE_NOTES,
+        "ontology_suggestions_by_cluster": suggest_ontology_terms(records, labels),
         "summary": summary,
     }
     with open(output_dir / "summary.json", "w", encoding="utf-8") as file:
         json.dump(metadata, file, ensure_ascii=False, indent=2)
+    export_json(output_dir / "organoid_ontology.json")
+    export_csv(output_dir / "organoid_ontology.csv")
 
     print(f"Reducer: {reducer_name} | Clusterer: {clusterer_name}")
     print(f"Clusters: {metadata['num_clusters_excluding_noise']} | Noise: {metadata['noise_count']}")
@@ -425,6 +461,7 @@ def main():
     for item in summary:
         print(f"  {item['name']:12s} n={item['count']:4d} datasets={item['datasets']}")
     print(f"\nSaved discovery results to: {output_dir}")
+    print("Candidate subtype ontology exported as organoid_ontology.csv/json.")
     print("Check cluster_examples/ and clusters_2d.png, then manually name meaningful clusters.")
 
 

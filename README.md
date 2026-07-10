@@ -27,6 +27,7 @@ organoid_project/
 ├── mil_model.py                      # Attention-MIL 多任务模型
 ├── train_mil_multitask.py            # 推荐：Attention-MIL 多任务训练
 ├── discover_subtypes.py              # 未知亚型发现：特征提取 + 降维 + 聚类
+├── organoid_ontology.py              # 类器官类型/亚型/形态特征知识库
 ├── MIL_README.md                     # MIL 方案详细说明
 ├── data/                             # 脑类器官数据
 ├── models/                           # 模型权重，不上传 GitHub
@@ -267,6 +268,30 @@ logs/discovery/
 ```bash
 pip install -r requirements-discovery.txt
 ```
+
+### 类器官亚型知识库
+
+项目内置了一个初步知识库：`organoid_ontology.py`。它整理了常见类器官系统、亚型/形态名称和显微图像中可能观察到的特征，例如：
+
+- 通用形态：`spheroid`、`cystic`、`budding`、`solid_compact`、`branched`。
+- 肠道：`enterosphere`、`early_budding`、`late_budding`、`cystic_intestinal`。
+- 脑/神经：`cerebral_organoid`、`forebrain_organoid`、`midbrain_organoid`、`assembloid`。
+- 肝胆/胰腺/胃/肺/肾/视网膜等常见系统。
+
+单独导出知识库：
+
+```bash
+python organoid_ontology.py
+```
+
+运行 `discover_subtypes.py` 时，会自动把候选知识库导出到结果目录：
+
+```text
+logs/discovery/organoid_ontology.csv
+logs/discovery/organoid_ontology.json
+```
+
+注意：这个知识库用于辅助解释 cluster 和设计标签体系，不能替代人工标注，也不能证明某张图一定属于某个亚型。
 
 ---
 

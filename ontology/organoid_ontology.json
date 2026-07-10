@@ -1,0 +1,620 @@
+{
+  "source_notes": {
+    "scope": "Curated high-level ontology from common organoid review concepts and morphology terms.",
+    "limitations": [
+      "Organoid subtype names are not standardized across papers.",
+      "Many labels are protocol-defined or marker-defined, not visually separable in brightfield images.",
+      "Morphology terms such as cystic/budding/solid can appear across multiple tissues.",
+      "Use this ontology to guide annotation and cluster interpretation, not as ground truth."
+    ],
+    "recommended_workflow": [
+      "Run discover_subtypes.py to cluster images by visual embedding.",
+      "Inspect cluster_examples manually.",
+      "Use this ontology to choose candidate names for clusters.",
+      "Train a supervised classifier only after cluster labels are reviewed."
+    ]
+  },
+  "records": [
+    {
+      "organoid_type": "general_morphology",
+      "subtype": "spheroid",
+      "category": "morphology",
+      "visual_features": [
+        "round or oval outline",
+        "smooth boundary",
+        "compact 3D sphere",
+        "limited protrusions"
+      ],
+      "biological_notes": "A broad morphology seen in many organoid systems and tumor spheroids.",
+      "synonyms": [
+        "sphere-like",
+        "round organoid",
+        "spheroid-like"
+      ],
+      "caution": "Spheroid is a morphology, not a tissue-specific lineage."
+    },
+    {
+      "organoid_type": "general_morphology",
+      "subtype": "cystic",
+      "category": "morphology",
+      "visual_features": [
+        "clear central lumen",
+        "thin epithelial wall",
+        "smooth circular boundary",
+        "hollow appearance"
+      ],
+      "biological_notes": "Common in intestinal, gastric, pancreatic, liver ductal, and some tumor organoids.",
+      "synonyms": [
+        "lumen-forming",
+        "cyst",
+        "hollow"
+      ],
+      "caution": "Requires image quality sufficient to see lumen; brightfield contrast can vary."
+    },
+    {
+      "organoid_type": "general_morphology",
+      "subtype": "budding",
+      "category": "morphology",
+      "visual_features": [
+        "multiple bud-like protrusions",
+        "irregular lobulated edge",
+        "crypt-like extensions"
+      ],
+      "biological_notes": "Often indicates intestinal crypt-like growth or branching epithelial expansion.",
+      "synonyms": [
+        "budded",
+        "crypt-budding",
+        "lobulated"
+      ],
+      "caution": "Budding can be confused with merged nearby organoids or segmentation artifacts."
+    },
+    {
+      "organoid_type": "general_morphology",
+      "subtype": "solid_compact",
+      "category": "morphology",
+      "visual_features": [
+        "dense interior",
+        "weak or absent lumen",
+        "high opacity",
+        "compact mass"
+      ],
+      "biological_notes": "Frequently used for tumor organoids or less differentiated epithelial cultures.",
+      "synonyms": [
+        "solid",
+        "compact",
+        "dense"
+      ],
+      "caution": "Solid appearance may also result from focus, illumination, or necrotic center."
+    },
+    {
+      "organoid_type": "general_morphology",
+      "subtype": "branched",
+      "category": "morphology",
+      "visual_features": [
+        "branch-like extensions",
+        "tree-like structure",
+        "elongated projections",
+        "complex perimeter"
+      ],
+      "biological_notes": "Seen in airway, mammary, prostate, kidney/ureteric bud, and some glandular organoids.",
+      "synonyms": [
+        "branching",
+        "tree-like",
+        "ductal branching"
+      ],
+      "caution": "Branching morphology is tissue-context dependent."
+    },
+    {
+      "organoid_type": "general_morphology",
+      "subtype": "irregular_fragmented",
+      "category": "morphology",
+      "visual_features": [
+        "fragmented boundary",
+        "debris-like regions",
+        "low circularity",
+        "heterogeneous texture"
+      ],
+      "biological_notes": "Can represent damaged organoids, poor culture quality, or true invasive/irregular phenotype.",
+      "synonyms": [
+        "fragmented",
+        "debris-like",
+        "irregular"
+      ],
+      "caution": "Needs manual review; not always a biological subtype."
+    },
+    {
+      "organoid_type": "intestinal",
+      "subtype": "enterosphere",
+      "category": "developmental_stage",
+      "visual_features": [
+        "small round spheroid",
+        "smooth edge",
+        "early compact/cystic morphology"
+      ],
+      "biological_notes": "Early intestinal organoid state before prominent crypt budding.",
+      "synonyms": [
+        "early intestinal spheroid",
+        "early organoid"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "intestinal",
+      "subtype": "cystic_intestinal",
+      "category": "morphology",
+      "visual_features": [
+        "large central lumen",
+        "thin epithelial ring",
+        "smooth cyst-like morphology"
+      ],
+      "biological_notes": "Common intestinal organoid morphology, often associated with differentiated/cystic growth conditions.",
+      "synonyms": [
+        "cystic",
+        "lumen-forming intestinal organoid"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "intestinal",
+      "subtype": "early_budding",
+      "category": "developmental_stage",
+      "visual_features": [
+        "one or few small buds",
+        "mostly round body",
+        "emerging protrusions"
+      ],
+      "biological_notes": "Intermediate intestinal organoid morphology as crypt domains start forming.",
+      "synonyms": [
+        "early budding",
+        "few buds"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "intestinal",
+      "subtype": "late_budding",
+      "category": "developmental_stage",
+      "visual_features": [
+        "many crypt-like buds",
+        "lobulated boundary",
+        "complex edge",
+        "larger structure"
+      ],
+      "biological_notes": "Mature crypt-like intestinal organoids with pronounced budding domains.",
+      "synonyms": [
+        "mature budding",
+        "crypt-like",
+        "multi-budded"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "colorectal_cancer",
+      "subtype": "cystic_crc",
+      "category": "morphology",
+      "visual_features": [
+        "cystic lumen",
+        "smooth or moderately irregular wall",
+        "hollow tumor organoid"
+      ],
+      "biological_notes": "One common colorectal cancer organoid morphology.",
+      "synonyms": [
+        "cystic tumor organoid",
+        "hollow CRC organoid"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "colorectal_cancer",
+      "subtype": "solid_crc",
+      "category": "morphology",
+      "visual_features": [
+        "solid dense mass",
+        "no clear lumen",
+        "compact opaque interior"
+      ],
+      "biological_notes": "Common tumor organoid morphology associated with compact growth.",
+      "synonyms": [
+        "solid tumor organoid",
+        "compact CRC organoid"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "colorectal_cancer",
+      "subtype": "budding_invasive_crc",
+      "category": "morphology",
+      "visual_features": [
+        "irregular protrusions",
+        "budding edge",
+        "small detached clusters",
+        "invasive-like margins"
+      ],
+      "biological_notes": "Tumor organoid phenotype sometimes linked to invasive/budding behavior.",
+      "synonyms": [
+        "budding CRC",
+        "invasive-like"
+      ],
+      "caution": "Needs biological validation; morphology alone is not enough."
+    },
+    {
+      "organoid_type": "brain",
+      "subtype": "cerebral_organoid",
+      "category": "regional_identity",
+      "visual_features": [
+        "opaque neuroepithelial tissue",
+        "rosette-like regions",
+        "heterogeneous internal texture"
+      ],
+      "biological_notes": "General cerebral organoid containing mixed forebrain/midbrain/hindbrain-like tissues depending on protocol.",
+      "synonyms": [
+        "whole brain organoid",
+        "cerebral"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "brain",
+      "subtype": "forebrain_organoid",
+      "category": "regional_identity",
+      "visual_features": [
+        "neuroepithelial rosettes",
+        "ventricle-like cavities",
+        "layered radial structures"
+      ],
+      "biological_notes": "Region-specific organoid patterned toward forebrain/cortical identity.",
+      "synonyms": [
+        "cortical organoid",
+        "dorsal forebrain",
+        "ventral forebrain"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "brain",
+      "subtype": "midbrain_organoid",
+      "category": "regional_identity",
+      "visual_features": [
+        "dense neural tissue",
+        "pigmented/darker regions sometimes in dopaminergic protocols",
+        "neural rosettes"
+      ],
+      "biological_notes": "Organoid patterned toward midbrain identity, often used for dopaminergic neuron studies.",
+      "synonyms": [
+        "dopaminergic midbrain organoid"
+      ],
+      "caution": "Brightfield morphology alone may not reliably separate regional identity."
+    },
+    {
+      "organoid_type": "brain",
+      "subtype": "retinal_brain_related_organoid",
+      "category": "regional_identity",
+      "visual_features": [
+        "optic-cup-like vesicles",
+        "layered retinal tissue",
+        "pigmented RPE-like areas"
+      ],
+      "biological_notes": "Retinal organoids are neural ectoderm-derived but often treated as a separate system.",
+      "synonyms": [
+        "optic cup",
+        "retinal vesicle"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "brain",
+      "subtype": "assembloid",
+      "category": "culture_state",
+      "visual_features": [
+        "fused organoid masses",
+        "boundary between fused regions",
+        "larger composite structure"
+      ],
+      "biological_notes": "Fusion of region-specific organoids, used to model cell migration and circuit interactions.",
+      "synonyms": [
+        "brain assembloid",
+        "fused organoid"
+      ],
+      "caution": "Assembloid identity is usually defined by protocol, not only image morphology."
+    },
+    {
+      "organoid_type": "liver",
+      "subtype": "hepatic_organoid",
+      "category": "lineage",
+      "visual_features": [
+        "compact epithelial clusters",
+        "sometimes cystic or dense",
+        "variable lumen visibility"
+      ],
+      "biological_notes": "Hepatocyte-like or fetal liver-like organoids depending on protocol.",
+      "synonyms": [
+        "hepatocyte organoid",
+        "hepatic-like"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "liver",
+      "subtype": "cholangiocyte_organoid",
+      "category": "lineage",
+      "visual_features": [
+        "cystic duct-like spheres",
+        "clear lumen",
+        "epithelial wall"
+      ],
+      "biological_notes": "Bile duct/cholangiocyte organoids often show cystic ductal morphology.",
+      "synonyms": [
+        "bile duct organoid",
+        "ductal liver organoid"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "pancreas",
+      "subtype": "pancreatic_ductal_organoid",
+      "category": "lineage",
+      "visual_features": [
+        "cystic duct-like structures",
+        "smooth epithelial boundary",
+        "lumen"
+      ],
+      "biological_notes": "Pancreatic ductal organoids and PDAC organoids commonly show cystic or compact tumor morphologies.",
+      "synonyms": [
+        "ductal pancreatic organoid"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "pancreas",
+      "subtype": "pancreatic_tumor_solid",
+      "category": "disease_model",
+      "visual_features": [
+        "solid compact mass",
+        "irregular boundary",
+        "dense interior"
+      ],
+      "biological_notes": "Pancreatic cancer organoids often vary from cystic to solid/invasive-like morphologies.",
+      "synonyms": [
+        "PDAC organoid",
+        "solid pancreatic cancer organoid"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "gastric",
+      "subtype": "gastric_cystic",
+      "category": "morphology",
+      "visual_features": [
+        "cystic epithelial sphere",
+        "central lumen",
+        "smooth wall"
+      ],
+      "biological_notes": "Common gastric organoid morphology from antral/corpus/fundic protocols.",
+      "synonyms": [
+        "gastric cyst",
+        "gastric spheroid"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "gastric",
+      "subtype": "gastric_glandular_budding",
+      "category": "morphology",
+      "visual_features": [
+        "budding or gland-like protrusions",
+        "lobulated boundary",
+        "epithelial branches"
+      ],
+      "biological_notes": "Gastric gland-like organoid morphology in some culture conditions.",
+      "synonyms": [
+        "glandular gastric organoid"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "lung",
+      "subtype": "airway_organoid",
+      "category": "lineage",
+      "visual_features": [
+        "cystic or branched airway-like structures",
+        "lumen",
+        "epithelial wall"
+      ],
+      "biological_notes": "Models conducting airway epithelium; morphology can be cystic or branched.",
+      "synonyms": [
+        "bronchosphere",
+        "airway sphere"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "lung",
+      "subtype": "alveolar_organoid",
+      "category": "lineage",
+      "visual_features": [
+        "small rounded spheres",
+        "thin epithelial structures",
+        "alveolosphere-like morphology"
+      ],
+      "biological_notes": "Models alveolar epithelial lineages, often AT2-derived alveolospheres.",
+      "synonyms": [
+        "alveolosphere",
+        "AT2 organoid"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "lung",
+      "subtype": "lung_tumor_organoid",
+      "category": "disease_model",
+      "visual_features": [
+        "solid or cystic tumor spheres",
+        "irregular margins",
+        "heterogeneous opacity"
+      ],
+      "biological_notes": "Lung cancer organoids can show diverse tumor-like morphologies.",
+      "synonyms": [
+        "lung cancer organoid",
+        "tumoroid"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "kidney",
+      "subtype": "nephron_organoid",
+      "category": "lineage",
+      "visual_features": [
+        "segmented epithelial tubules",
+        "glomerulus-like round structures",
+        "complex internal pattern"
+      ],
+      "biological_notes": "Kidney organoids often contain nephron-like segmented structures.",
+      "synonyms": [
+        "renal organoid",
+        "nephron-like"
+      ],
+      "caution": "Brightfield whole-organoid images may not separate nephron segments without staining."
+    },
+    {
+      "organoid_type": "kidney",
+      "subtype": "ureteric_bud_organoid",
+      "category": "lineage",
+      "visual_features": [
+        "branching epithelial tree",
+        "duct-like branches",
+        "tree-like pattern"
+      ],
+      "biological_notes": "Ureteric bud/collecting duct organoids often show branching morphogenesis.",
+      "synonyms": [
+        "collecting duct organoid",
+        "ureteric bud"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "retina",
+      "subtype": "optic_cup_organoid",
+      "category": "developmental_stage",
+      "visual_features": [
+        "optic cup-like folded vesicle",
+        "layered retinal tissue",
+        "curved neuroepithelial sheet"
+      ],
+      "biological_notes": "Retinal organoid stage with optic cup-like architecture.",
+      "synonyms": [
+        "retinal cup",
+        "optic vesicle"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "retina",
+      "subtype": "rpe_organoid_region",
+      "category": "lineage",
+      "visual_features": [
+        "dark pigmented patches",
+        "RPE-like monolayer or islands",
+        "high contrast regions"
+      ],
+      "biological_notes": "Retinal pigment epithelium-like regions can appear dark/pigmented.",
+      "synonyms": [
+        "RPE-like",
+        "pigmented retinal organoid"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "mammary",
+      "subtype": "mammosphere",
+      "category": "morphology",
+      "visual_features": [
+        "round epithelial sphere",
+        "solid or hollow sphere",
+        "smooth boundary"
+      ],
+      "biological_notes": "Mammary epithelial organoids/spheres may be solid or lumen-forming.",
+      "synonyms": [
+        "breast organoid",
+        "mammary sphere"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "mammary",
+      "subtype": "branching_mammary_organoid",
+      "category": "morphology",
+      "visual_features": [
+        "duct-like branches",
+        "tree-like epithelial outgrowth",
+        "elongated projections"
+      ],
+      "biological_notes": "Used to model mammary branching morphogenesis.",
+      "synonyms": [
+        "branching breast organoid"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "prostate",
+      "subtype": "prostasphere",
+      "category": "morphology",
+      "visual_features": [
+        "spherical epithelial structure",
+        "cystic or solid",
+        "smooth boundary"
+      ],
+      "biological_notes": "Prostate organoids can form hollow or solid epithelial spheres.",
+      "synonyms": [
+        "prostate organoid"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "prostate",
+      "subtype": "branching_prostate_organoid",
+      "category": "morphology",
+      "visual_features": [
+        "branched epithelial outgrowth",
+        "ductal projections",
+        "irregular lobulated structure"
+      ],
+      "biological_notes": "Models prostate ductal branching and glandular morphogenesis.",
+      "synonyms": [
+        "ductal prostate organoid"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "endometrium",
+      "subtype": "endometrial_gland_organoid",
+      "category": "lineage",
+      "visual_features": [
+        "cystic gland-like sphere",
+        "central lumen",
+        "epithelial wall"
+      ],
+      "biological_notes": "Endometrial organoids commonly model glandular epithelium.",
+      "synonyms": [
+        "uterine organoid",
+        "endometrial gland"
+      ],
+      "caution": ""
+    },
+    {
+      "organoid_type": "bladder",
+      "subtype": "urothelial_organoid",
+      "category": "lineage",
+      "visual_features": [
+        "spherical epithelial organoid",
+        "cystic or compact morphology",
+        "smooth boundary"
+      ],
+      "biological_notes": "Urothelial/bladder organoids represent urinary tract epithelium.",
+      "synonyms": [
+        "bladder organoid",
+        "urothelial sphere"
+      ],
+      "caution": ""
+    }
+  ]
+}
