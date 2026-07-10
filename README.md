@@ -5,6 +5,7 @@
 1. **单数据集分类**：主要用于脑类器官数据集的 baseline。
 2. **三数据集多任务训练**：同时使用人小肠、脑类器官、小鼠小肠三组数据。
 3. **Attention-MIL 多任务训练（推荐）**：适合样本不足、数据来源不同、切割步骤弱化的情况。
+4. **未知亚型发现**：当不知道亚型数量或名称时，先聚类发现潜在亚型。
 
 当前最推荐使用第 3 条路线：`train_mil_multitask.py`。
 
@@ -25,6 +26,7 @@ organoid_project/
 ├── multi_train.py                    # 三数据集普通多任务训练
 ├── mil_model.py                      # Attention-MIL 多任务模型
 ├── train_mil_multitask.py            # 推荐：Attention-MIL 多任务训练
+├── discover_subtypes.py              # 未知亚型发现：特征提取 + 降维 + 聚类
 ├── MIL_README.md                     # MIL 方案详细说明
 ├── data/                             # 脑类器官数据
 ├── models/                           # 模型权重，不上传 GitHub
@@ -212,6 +214,59 @@ python multi_train.py
 ```
 
 这个版本会直接把图像 resize 后输入模型。它可以作为对照实验，但在切割不精确时，推荐优先使用 `train_mil_multitask.py`。
+
+---
+
+## 未知亚型发现
+
+如果你不知道类器官有几种亚型，也不知道亚型名称，不应该直接训练普通分类器。更合理的流程是：
+
+```text
+图片
+→ 预训练模型提取 embedding
+→ PCA/UMAP 降维
+→ DBSCAN/HDBSCAN/KMeans 聚类
+→ 导出每个 cluster 的代表图片
+→ 人工观察并命名 cluster
+→ 再训练分类器
+```
+
+运行内置三组数据的未知亚型发现：
+
+```bash
+python discover_subtypes.py \
+  --dataset all \
+  --max-samples 1000 \
+  --backbone mobilenet_v3_small
+```
+
+对任意未知图片文件夹运行：
+
+```bash
+python discover_subtypes.py \
+  --input-dir /path/to/unknown_organoid_images \
+  --max-samples 0
+```
+
+输出位置：
+
+```text
+logs/discovery/
+├── embeddings.npy                    # 每张图的高维特征
+├── reduced_2d.npy                    # 2D 降维坐标
+├── cluster_assignments.csv           # 每张图属于哪个 cluster
+├── clusters_2d.png                   # 聚类可视化图
+├── summary.json                      # 每个 cluster 的统计信息
+└── cluster_examples/                 # 每个 cluster 的代表图片
+```
+
+如果安装了 `umap-learn` 和 `hdbscan`，脚本会优先使用 UMAP + HDBSCAN；如果没有安装，会自动退化为 PCA + DBSCAN。
+
+可选增强依赖安装：
+
+```bash
+pip install -r requirements-discovery.txt
+```
 
 ---
 

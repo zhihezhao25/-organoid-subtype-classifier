@@ -61,3 +61,19 @@ python train_mil_multitask.py \
 - `tissue_acc`：模型是否能区分三组数据来源。
 
 不要只看普通 accuracy，样本不均衡时会误导。
+
+## 如果不知道亚型数量和名称
+
+这时不要直接做分类，先运行未知亚型发现：
+
+```bash
+python discover_subtypes.py --dataset all --max-samples 1000
+```
+
+脚本会把图片转成 embedding，再自动聚类，并导出每个 cluster 的代表图片到：
+
+```text
+logs/discovery/cluster_examples/
+```
+
+你需要人工查看这些代表图片，判断 cluster 是否对应真实形态亚型，再给它们命名。命名后再回到 `train_mil_multitask.py` 训练已知亚型分类器。

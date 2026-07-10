@@ -1,0 +1,4 @@
+# 可选：未知亚型发现增强版
+# 不安装也能运行 discover_subtypes.py；脚本会自动退化为 PCA + DBSCAN。
+umap-learn>=0.5.5
+hdbscan>=0.8.33

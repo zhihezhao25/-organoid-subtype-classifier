@@ -11,6 +11,9 @@ __pycache__/
 
 # 日志
 logs/*.png
+logs/discovery*/
+logs/**/cluster_examples/
+logs/**/*.npy
 
 # 系统文件
 .DS_Store
