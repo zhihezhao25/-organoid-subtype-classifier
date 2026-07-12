@@ -68,7 +68,10 @@ class CLORGDataset(Dataset):
 
     def __getitem__(self, idx):
         img_path, label = self.samples[idx]
-        img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
+        img = cv2.imread(img_path)
+        if img is None:
+            raise FileNotFoundError(f"Could not read image: {img_path}")
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(img)
 
         if self.transform:
@@ -114,6 +117,10 @@ class BrainOrganoidDataset(Dataset):
             if p.exists():
                 img = cv2.imread(str(p), cv2.IMREAD_UNCHANGED if p.suffix=='.tif' else cv2.IMREAD_COLOR)
                 break
+        else:
+            raise FileNotFoundError(f"Could not find image for img_id={img_id}")
+        if img is None:
+            raise FileNotFoundError(f"Could not read image for img_id={img_id}")
         if img.ndim == 2:
             img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
         else:
@@ -187,9 +194,9 @@ class OrgaQuantDataset(Dataset):
                     xc, yc, bw, bh = map(float, parts[1:5])
                     # 转像素坐标
                     x1 = int((xc - bw/2) * w)
-                    y1 = int((yc - bh/2) * w)
+                    y1 = int((yc - bh/2) * h)
                     x2 = int((xc + bw/2) * w)
-                    y2 = int((yc + bh/2) * w)
+                    y2 = int((yc + bh/2) * h)
                     # 裁剪
                     crop = img[max(0,y1):min(h,y2), max(0,x1):min(w,x2), :]
                     if crop.size == 0:

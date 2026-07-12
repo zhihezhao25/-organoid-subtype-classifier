@@ -9,6 +9,21 @@
 
 当前最推荐使用第 3 条路线：`train_mil_multitask.py`。
 
+当前项目主线已收敛为：
+
+```text
+基于图像的类器官类型与亚型/组别分类原型框架
+```
+
+具体任务边界见：
+
+```text
+metadata/final_label_schema.md
+metadata/training_manifest.csv
+```
+
+其中，肠道类器官形态亚型分类是主科学任务；脑类器官当前作为 clone/group 分类辅助任务，不直接称为形态亚型分类。
+
 ---
 
 ## 项目结构
@@ -26,10 +41,13 @@ organoid_project/
 ├── multi_train.py                    # 三数据集普通多任务训练
 ├── mil_model.py                      # Attention-MIL 多任务模型
 ├── train_mil_multitask.py            # 推荐：Attention-MIL 多任务训练
+├── build_metadata_manifest.py        # 生成统一图像/对象级 metadata 数据库
+├── build_training_manifest.py        # 生成最终训练 manifest
 ├── discover_subtypes.py              # 未知亚型发现：特征提取 + 降维 + 聚类
 ├── organoid_ontology.py              # 类器官类型/亚型/形态特征知识库
 ├── MIL_README.md                     # MIL 方案详细说明
 ├── data/                             # 脑类器官数据
+├── metadata/                         # 统一图像/对象级 metadata manifest
 ├── models/                           # 模型权重，不上传 GitHub
 └── logs/                             # 指标与图表
 ```
@@ -41,6 +59,36 @@ organoid_project/
 /Users/zhaozhihe/Desktop/2026surf/organoid_project/data
 /Users/zhaozhihe/Desktop/2026surf/OrganoidDataset小鼠小肠
 ```
+
+---
+
+## 统一 Metadata 数据库
+
+项目现在包含一个可重复生成的核心 metadata 数据库，用来连接图像、标签、对象框、mask 和实验背景。
+
+重新生成：
+
+```bash
+python build_metadata_manifest.py
+```
+
+输出位置：
+
+```text
+metadata/
+├── image_manifest.csv                # 每张图/裁剪图一行
+├── object_manifest.csv               # 每个类器官实例一行
+├── image_manifest_summary.csv        # 图像级标签分布
+└── object_manifest_summary.csv       # 对象级标签分布
+```
+
+当前 manifest 覆盖三组数据：
+
+- 人小肠 CLORG：文件夹类别映射到 `cyst`、`early_budding`、`late_budding`、`spheroid`。
+- 脑类器官 OrganoIDNet：连接 `dataset_overview.csv`、原图、mask、day、clone、imaging source；当前标签来自 clone metadata。
+- 小鼠小肠 OrgaQuant：图像级记录整图，对象级记录 YOLO bbox 和类别标签。
+
+注意：脑类器官当前使用 clone 作为监督标签，这对实验可用，但不等同于已经人工确认的视觉形态亚型。
 
 ---
 
@@ -113,7 +161,8 @@ python train_mil_multitask.py \
   --image-size 128 \
   --patch-size 64 \
   --batch-size 2 \
-  --no-pretrained
+  --no-pretrained \
+  --run-name smoke
 ```
 
 ### CPU 可跑版本
@@ -151,6 +200,9 @@ python train_mil_multitask.py \
 - `--max-samples 0` 表示使用完整训练集。
 - `--max-val-samples 0` 表示使用完整验证集。
 - `--freeze-epochs 5` 表示前 5 轮冻结 backbone，只训练分类头，之后再微调 backbone。
+- 默认会启用每个数据集内部的类别权重，减少大类别主导训练；如果要关闭，添加 `--no-class-balance`。
+- 如果要用已有 mask 对脑类器官图像先裁剪再切 patch，添加 `--use-brain-mask`。
+- 如果只是测试或做消融实验，建议添加 `--run-name 名称`，避免覆盖默认模型和日志。
 
 ---
 

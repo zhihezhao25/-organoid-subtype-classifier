@@ -1,0 +1,5 @@
+source_name,local_path,approx_size,downloaded,license_status,primary_use,include_in_training_now,notes
+OrganoID,../external_sources/OrganoID,258M,yes,no_license_file_found,segmentation/tracking baseline and OSF dataset entry,no,"Reference code/model downloaded; dataset remains on OSF unless separately downloaded."
+OrgaExtractor,../external_sources/orgaextractor,2.3M,yes,MIT,segmentation baseline and morphology feature extraction,no,"Good source for feature formulas: area, perimeter, eccentricity, circularity, roundness, solidity."
+NOA / napari-organoid-analyzer,../external_sources/napari-organoid-analyzer,956K,yes,MIT,annotation and feature-extraction workflow reference,no,"Useful for annotation workflow and SAM-based segmentation design."
+BOrg,../external_sources/borg,619M,yes,no_license_file_found,brain organoid mitosis auxiliary reference,no,"Contains mmdetection-format brain organoid mitosis data/reference; not a whole-organoid subtype dataset."

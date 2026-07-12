@@ -134,7 +134,7 @@ def build_datasets(args):
         BRAIN / "dataset_overview.csv",
         BRAIN / "imgs",
         BRAIN / "labels",
-        use_mask=False,
+        use_mask=args.use_brain_mask,
         img_size=args.image_size,
         transform=identity_transform,
     )
@@ -142,7 +142,7 @@ def build_datasets(args):
         BRAIN / "dataset_overview.csv",
         BRAIN / "imgs",
         BRAIN / "labels",
-        use_mask=False,
+        use_mask=args.use_brain_mask,
         img_size=args.image_size,
         transform=identity_transform,
     )
@@ -166,6 +166,33 @@ def build_datasets(args):
     return train_sets, val_sets
 
 
+def dataset_labels(dataset):
+    """Extract labels from local dataset wrappers without loading image tensors."""
+    if isinstance(dataset, PatchBagDataset):
+        return dataset_labels(dataset.base_dataset)
+    if isinstance(dataset, Subset):
+        base_labels = dataset_labels(dataset.dataset)
+        return [base_labels[i] for i in dataset.indices]
+    if isinstance(dataset, CLORGDataset):
+        return [label for _, label in dataset.samples]
+    if isinstance(dataset, BrainOrganoidDataset):
+        return dataset.df["label"].astype(int).tolist()
+    if isinstance(dataset, OrgaQuantDataset):
+        return [label for _, label in dataset.samples]
+    labels = []
+    for _, label in dataset:
+        labels.append(int(label))
+    return labels
+
+
+def class_weights_from_labels(labels, num_classes, device):
+    counts = np.bincount(np.asarray(labels, dtype=np.int64), minlength=num_classes).astype(np.float32)
+    counts = np.maximum(counts, 1.0)
+    weights = counts.sum() / (num_classes * counts)
+    weights = weights / weights.mean()
+    return torch.tensor(weights, dtype=torch.float32, device=device)
+
+
 def build_loaders(datasets, batch_size, shuffle, workers):
     return {
         name: DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=workers, drop_last=shuffle)
@@ -178,7 +205,7 @@ def soft_cross_entropy(logits, targets):
     return -(targets * log_probs).sum(dim=1).mean()
 
 
-def train_epoch(model, loaders, optimizer, criterion, device, args):
+def train_epoch(model, loaders, optimizer, subtype_criteria, tissue_criterion, device, args):
     model.train()
     totals = {"loss": 0.0, "n": 0, "tissue_correct": 0, "subtype_correct": 0}
     iterators = {name: iter(loader) for name, loader in loaders.items()}
@@ -202,7 +229,9 @@ def train_epoch(model, loaders, optimizer, criterion, device, args):
             tissue_targets = torch.full((patches.size(0),), tissue_index, device=device, dtype=torch.long)
 
             tissue_logits, subtype_logits, _ = model(patches, tissue=tissue_name)
-            loss = criterion(subtype_logits, labels) + args.tissue_loss_weight * criterion(tissue_logits, tissue_targets)
+            subtype_loss = subtype_criteria[tissue_name](subtype_logits, labels)
+            tissue_loss = tissue_criterion(tissue_logits, tissue_targets)
+            loss = subtype_loss + args.tissue_loss_weight * tissue_loss
             accumulated_loss = accumulated_loss + loss
             batches += 1
 
@@ -224,7 +253,7 @@ def train_epoch(model, loaders, optimizer, criterion, device, args):
 
 
 @torch.no_grad()
-def validate(model, loaders, criterion, device, args):
+def validate(model, loaders, subtype_criteria, tissue_criterion, device, args):
     model.eval()
     results = {}
     all_true, all_pred = [], []
@@ -241,7 +270,9 @@ def validate(model, loaders, criterion, device, args):
             tissue_targets = torch.full((patches.size(0),), tissue_index, device=device, dtype=torch.long)
 
             tissue_logits, subtype_logits, _ = model(patches, tissue=tissue_name)
-            loss = criterion(subtype_logits, labels) + args.tissue_loss_weight * criterion(tissue_logits, tissue_targets)
+            subtype_loss = subtype_criteria[tissue_name](subtype_logits, labels)
+            tissue_loss = tissue_criterion(tissue_logits, tissue_targets)
+            loss = subtype_loss + args.tissue_loss_weight * tissue_loss
             preds = subtype_logits.argmax(1)
 
             y_true.extend(labels.cpu().tolist())
@@ -305,6 +336,9 @@ def parse_args():
     parser.add_argument("--workers", type=int, default=0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--no-pretrained", action="store_true")
+    parser.add_argument("--use-brain-mask", action="store_true", help="Crop brain organoid images using available mask files before patching")
+    parser.add_argument("--no-class-balance", action="store_true", help="Disable inverse-frequency subtype loss weights")
+    parser.add_argument("--run-name", default="", help="Optional prefix for model and metrics files, useful for smoke tests or ablations")
     return parser.parse_args()
 
 
@@ -339,7 +373,16 @@ def main():
     ).to(device)
     model.freeze_backbone()
 
-    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+    tissue_criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+    subtype_criteria = {}
+    for tissue_name, dataset in train_sets.items():
+        num_classes = TISSUES[tissue_name]["num_classes"]
+        if args.no_class_balance:
+            weights = None
+        else:
+            weights = class_weights_from_labels(dataset_labels(dataset), num_classes, device)
+            print(f"  {tissue_name:16s} class_weights={weights.detach().cpu().numpy().round(3).tolist()}")
+        subtype_criteria[tissue_name] = nn.CrossEntropyLoss(weight=weights, label_smoothing=0.1)
     optimizer = torch.optim.AdamW(
         filter(lambda p: p.requires_grad, model.parameters()),
         lr=args.lr_head,
@@ -350,8 +393,9 @@ def main():
     log_dir = ROOT / "logs"
     save_dir.mkdir(parents=True, exist_ok=True)
     log_dir.mkdir(parents=True, exist_ok=True)
-    best_path = save_dir / "mil_multitask_best.pth"
-    metrics_path = log_dir / "mil_multitask_metrics.json"
+    prefix = f"{args.run_name}_" if args.run_name else ""
+    best_path = save_dir / f"{prefix}mil_multitask_best.pth"
+    metrics_path = log_dir / f"{prefix}mil_multitask_metrics.json"
 
     best_score = -1.0
     history = []
@@ -369,8 +413,8 @@ def main():
             print("\nBackbone unfrozen for fine-tuning.")
 
         t0 = time.time()
-        train_metrics = train_epoch(model, train_loaders, optimizer, criterion, device, args)
-        val_metrics = validate(model, val_loaders, criterion, device, args)
+        train_metrics = train_epoch(model, train_loaders, optimizer, subtype_criteria, tissue_criterion, device, args)
+        val_metrics = validate(model, val_loaders, subtype_criteria, tissue_criterion, device, args)
         score = val_metrics["overall"]["macro_f1"]
 
         record = {"epoch": epoch, "train": train_metrics, "val": val_metrics}
@@ -399,7 +443,7 @@ def main():
             f"{per_dataset} | {time.time() - t0:.0f}s"
         )
 
-    last_path = save_dir / "mil_multitask_last.pth"
+    last_path = save_dir / f"{prefix}mil_multitask_last.pth"
     torch.save(model.state_dict(), last_path)
     print(f"\nDone in {(time.time() - start) / 60:.1f} min")
     print(f"Best model: {best_path} | macro-F1={best_score:.4f}")
