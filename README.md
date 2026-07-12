@@ -1,28 +1,81 @@
-# 类器官亚型分类项目
+# 基于图像的类器官类型与亚型/组别分类原型框架
 
-本项目用于类器官亚型分类，包含三条训练路线：
+本项目当前方向是构建一个可扩展的 organoid image classification framework，而不是一次性完成“所有类器官通用亚型识别”。
 
-1. **单数据集分类**：主要用于脑类器官数据集的 baseline。
-2. **三数据集多任务训练**：同时使用人小肠、脑类器官、小鼠小肠三组数据。
-3. **Attention-MIL 多任务训练（推荐）**：适合样本不足、数据来源不同、切割步骤弱化的情况。
-4. **未知亚型发现**：当不知道亚型数量或名称时，先聚类发现潜在亚型。
+当前项目目标：
 
-当前最推荐使用第 3 条路线：`train_mil_multitask.py`。
+- 整理类器官图像、标签、mask、bbox 和实验 metadata。
+- 在已有三组数据上验证图像分类 pipeline。
+- 以肠道类器官形态亚型分类作为主科学任务。
+- 将脑类器官作为 clone/group 分类辅助任务，而不是强行称为形态亚型分类。
+- 为未来新类器官数据集预留“登记 metadata、少量人工标注、微调、验证”的扩展流程。
 
-当前项目主线已收敛为：
+## 当前任务定义
+
+### 1. 主任务：肠道类器官形态亚型分类
+
+数据来源：
+
+- 人小肠类器官 crops
+- 小鼠小肠类器官 YOLO object crops
+
+统一标签：
+
+- `cyst`
+- `early_budding`
+- `late_budding`
+- `spheroid`
+
+这是当前最重要、最适合写成研究主线的任务。
+
+### 2. 辅助任务：脑类器官 clone/group 分类
+
+数据来源：
+
+- 脑类器官图像
+
+标签：
+
+- `A1A-1`
+- `B2A-2`
+- `TH2-7`
+- `wt2D`
+
+注意：这些标签来自 clone/group metadata，不是已经人工确认的 morphology subtype。
+
+### 3. 框架任务：类器官 domain/type 判断
+
+标签：
+
+- `human_intestine`
+- `mouse_intestine`
+- `brain`
+
+这个任务用于 domain routing、质量控制和未来数据集扩展。
+
+完整标签体系和训练清单见：
+
+- `metadata/final_label_schema.md`
+- `metadata/training_manifest.csv`
+
+## 当前训练路线
+
+本项目包含四条路线：
+
+1. **单数据集 expert model**：分别训练人小肠、小鼠小肠、脑类器官模型，用于提高单域表现。
+2. **肠道统一四分类模型**：只使用人小肠 + 小鼠小肠，预测 `cyst / early_budding / late_budding / spheroid`。
+3. **Attention-MIL 多任务训练**：共享 backbone，并为不同数据域设置独立 head，用作跨数据源对照实验。
+4. **未知亚型发现**：当不知道亚型数量或名称时，先聚类、人工观察代表图片，再命名并训练分类器。
+
+当前最推荐的研究顺序：
 
 ```text
-基于图像的类器官类型与亚型/组别分类原型框架
+metadata 整理
+→ 肠道四分类 expert baseline
+→ Attention-MIL 多任务对照
+→ 错误分析和混淆矩阵
+→ 新数据扩展流程说明
 ```
-
-具体任务边界见：
-
-```text
-metadata/final_label_schema.md
-metadata/training_manifest.csv
-```
-
-其中，肠道类器官形态亚型分类是主科学任务；脑类器官当前作为 clone/group 分类辅助任务，不直接称为形态亚型分类。
 
 ---
 
