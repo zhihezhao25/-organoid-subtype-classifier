@@ -1,0 +1,5 @@
+run_name,record_time,task,task_cn,domain,backbone,epochs,best_epoch,accuracy,balanced_accuracy,macro_f1,loss,notes
+intestine_subtype_b0,2026-07-13 11:13:56 CST,intestinal_morphology_subtype,小肠类器官形态亚型四分类,both,efficientnet_b0,25,25,0.9227,0.9218,0.9099,0.7377,"主 baseline：人小肠 + 小鼠小肠，四分类标签为 cyst / early_budding / late_budding / spheroid。"
+human_intestine_b0,2026-07-13 18:25:39 CST,intestinal_morphology_subtype,人小肠类器官形态亚型四分类,human,efficientnet_b0,25,22,0.8907,0.8958,0.8766,0.8612,"单数据域 expert baseline：仅使用人小肠类器官 crop 图像，四分类标签为 cyst / early_budding / late_budding / spheroid。"
+mouse_intestine_b0,2026-07-13 23:00:03 CST,intestinal_morphology_subtype,小鼠小肠类器官形态亚型四分类,mouse,efficientnet_b0,25,25,0.8866,0.8916,0.8667,0.7193,"单数据域 expert baseline：仅使用小鼠小肠类器官 YOLO bbox 裁剪图像，四分类标签为 cyst / early_budding / late_budding / spheroid。"
+intestine_subtype_b0_no_sampler,2026-07-21 02:10:03 CST,intestinal_morphology_subtype,小肠类器官形态亚型四分类,both,efficientnet_b0,25,24,0.9251,0.9177,0.9102,0.7315,"消融实验：人小肠 + 小鼠小肠，四分类标签为 cyst / early_budding / late_budding / spheroid；不启用 weighted sampler，保留 class-balanced loss。"

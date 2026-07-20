@@ -58,6 +58,34 @@
 - `metadata/final_label_schema.md`
 - `metadata/training_manifest.csv`
 
+## 当前实验结果
+
+目前已经完成四组小肠类器官形态亚型四分类实验，统一预测：
+
+```text
+cyst / early_budding / late_budding / spheroid
+```
+
+| Run | 数据 | 设置 | Accuracy | Balanced accuracy | Macro-F1 |
+| --- | --- | --- | ---: | ---: | ---: |
+| `intestine_subtype_b0` | 人小肠 + 小鼠小肠 | weighted sampler | `0.9227` | `0.9218` | `0.9099` |
+| `human_intestine_b0` | 仅人小肠 | weighted sampler | `0.8907` | `0.8958` | `0.8766` |
+| `mouse_intestine_b0` | 仅小鼠小肠 | weighted sampler | `0.8866` | `0.8916` | `0.8667` |
+| `intestine_subtype_b0_no_sampler` | 人小肠 + 小鼠小肠 | no weighted sampler | `0.9251` | `0.9177` | `0.9102` |
+
+主要结论：
+
+- 人小肠 + 小鼠小肠联合训练优于单数据域训练，说明两组肠道类器官图像存在可共享的形态特征。
+- 当前四分类任务具有可行性，联合模型达到约 `92%` validation accuracy 和 `91%` macro-F1。
+- weighted sampler 对最终结果影响较小；启用和不启用时结果非常接近。
+- 主要混淆来自 `early_budding` vs `late_budding` 和 `cyst` vs `spheroid`，符合类器官形态连续变化的特点。
+
+详细记录见：
+
+- `EXPERIMENT_RESULTS.md`
+- `metadata/experiment_results.csv`
+- `logs/*/result_summary.md`
+
 ## 当前训练路线
 
 本项目包含四条路线：
