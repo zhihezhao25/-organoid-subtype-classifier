@@ -72,6 +72,7 @@ cyst / early_budding / late_budding / spheroid
 | `human_intestine_b0` | 仅人小肠 | weighted sampler | `0.8907` | `0.8958` | `0.8766` |
 | `mouse_intestine_b0` | 仅小鼠小肠 | weighted sampler | `0.8866` | `0.8916` | `0.8667` |
 | `intestine_subtype_b0_no_sampler` | 人小肠 + 小鼠小肠 | no weighted sampler | `0.9251` | `0.9177` | `0.9102` |
+| `mil_multitask_mobile` | 人小肠 + 脑 + 小鼠小肠 | Attention-MIL multitask, MobileNetV3-small | `0.5019` | `0.4996` | `0.4479` |
 
 主要结论：
 
@@ -79,6 +80,7 @@ cyst / early_budding / late_budding / spheroid
 - 当前四分类任务具有可行性，联合模型达到约 `92%` validation accuracy 和 `91%` macro-F1。
 - weighted sampler 对最终结果影响较小；启用和不启用时结果非常接近。
 - 主要混淆来自 `early_budding` vs `late_budding` 和 `cyst` vs `spheroid`，符合类器官形态连续变化的特点。
+- Attention-MIL 多任务 mobile 对照没有超过 crop/object-level expert baseline。当前小肠数据已有较好的 crop 或 bbox，因此直接训练 object/crop-level expert model 更适合作为主结果。
 
 详细记录见：
 
@@ -125,6 +127,7 @@ organoid_project/
 ├── build_metadata_manifest.py        # 生成统一图像/对象级 metadata 数据库
 ├── build_training_manifest.py        # 生成最终训练 manifest
 ├── discover_subtypes.py              # 未知亚型发现：特征提取 + 降维 + 聚类
+├── export_misclassified_samples.py   # 导出误分类样本和困难样本图片面板
 ├── organoid_ontology.py              # 类器官类型/亚型/形态特征知识库
 ├── MIL_README.md                     # MIL 方案详细说明
 ├── data/                             # 脑类器官数据

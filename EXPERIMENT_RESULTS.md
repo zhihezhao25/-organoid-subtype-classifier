@@ -17,6 +17,7 @@ Output: cyst / early_budding / late_budding / spheroid
 | `human_intestine_b0` | human intestine only | EfficientNet-B0, weighted sampler | 22 | 0.8907 | 0.8958 | 0.8766 |
 | `mouse_intestine_b0` | mouse intestine only | EfficientNet-B0, weighted sampler | 25 | 0.8866 | 0.8916 | 0.8667 |
 | `intestine_subtype_b0_no_sampler` | human + mouse intestine | EfficientNet-B0, no weighted sampler | 24 | 0.9251 | 0.9177 | 0.9102 |
+| `mil_multitask_mobile` | human + brain + mouse | Attention-MIL multitask, MobileNetV3-small | 20 | 0.5019 | 0.4996 | 0.4479 |
 
 The structured CSV version is available at:
 
@@ -46,6 +47,10 @@ metadata/experiment_results.csv
    - `cyst` and `spheroid`
 
    This is biologically reasonable because intestinal organoid morphology can change continuously, and some examples lie near category boundaries.
+
+5. Attention-MIL did not outperform the crop/object-level expert baseline.
+
+   The `mil_multitask_mobile` run reached 50.19% overall validation accuracy, 49.96% balanced accuracy, and 44.79% macro-F1 across the three multitask domains. This result is useful as a weakly supervised multi-domain comparison, but it is not the strongest model for the main intestinal morphology task. In the current data, the intestinal images already have high-quality crops or object bounding boxes, so the direct crop/object-level EfficientNet-B0 expert baseline remains more appropriate for reporting.
 
 ## Recommended Result for Reporting
 
@@ -89,4 +94,12 @@ No weighted sampler ablation:
 logs/intestine_subtype_b0_no_sampler/metrics.json
 logs/intestine_subtype_b0_no_sampler/confusion_matrix.png
 logs/intestine_subtype_b0_no_sampler/result_summary.md
+```
+
+Attention-MIL multitask comparison:
+
+```text
+logs/mil_multitask_mobile_mil_multitask_metrics.json
+models/mil_multitask_mobile_mil_multitask_best.pth
+models/mil_multitask_mobile_mil_multitask_last.pth
 ```
