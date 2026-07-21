@@ -90,12 +90,11 @@ cyst / early_budding / late_budding / spheroid
 
 ## 当前训练路线
 
-本项目包含四条路线：
+本项目当前保留三条主线：
 
-1. **单数据集 expert model**：分别训练人小肠、小鼠小肠、脑类器官模型，用于提高单域表现。
-2. **肠道统一四分类模型**：只使用人小肠 + 小鼠小肠，预测 `cyst / early_budding / late_budding / spheroid`。
-3. **Attention-MIL 多任务训练**：共享 backbone，并为不同数据域设置独立 head，用作跨数据源对照实验。
-4. **未知亚型发现**：当不知道亚型数量或名称时，先聚类、人工观察代表图片，再命名并训练分类器。
+1. **肠道统一四分类模型**：使用人小肠 + 小鼠小肠，预测 `cyst / early_budding / late_budding / spheroid`，这是主科学任务。
+2. **Attention-MIL 多任务训练**：共享 backbone，并为不同数据域设置独立 head，用作跨数据源对照实验。
+3. **未知亚型发现**：当不知道亚型数量或名称时，先聚类、人工观察代表图片，再命名并训练分类器。
 
 当前最推荐的研究顺序：
 
@@ -113,23 +112,17 @@ metadata 整理
 
 ```text
 organoid_project/
-├── config.py                         # 单数据集训练参数
-├── dataset.py                        # 单数据集加载与增强
 ├── model.py                          # 单数据集分类模型
-├── train.py                          # 单数据集训练脚本
-├── train_binary.py                   # 二分类训练脚本
-├── evaluate.py                       # 单数据集评估脚本
-├── multi_dataset.py                  # 三数据集加载器
-├── multi_model.py                    # 三数据集普通多任务模型
-├── multi_train.py                    # 三数据集普通多任务训练
+├── multi_dataset.py                  # 三数据集加载器，供 MIL 对照使用
 ├── mil_model.py                      # Attention-MIL 多任务模型
-├── train_mil_multitask.py            # 推荐：Attention-MIL 多任务训练
+├── train_intestinal_subtype.py       # 主任务：肠道四分类 expert baseline
+├── train_mil_multitask.py            # Attention-MIL 多任务对照
 ├── build_metadata_manifest.py        # 生成统一图像/对象级 metadata 数据库
 ├── build_training_manifest.py        # 生成最终训练 manifest
 ├── discover_subtypes.py              # 未知亚型发现：特征提取 + 降维 + 聚类
 ├── export_misclassified_samples.py   # 导出误分类样本和困难样本图片面板
 ├── organoid_ontology.py              # 类器官类型/亚型/形态特征知识库
-├── MIL_README.md                     # MIL 方案详细说明
+├── archive/legacy_scripts/           # 早期单数据集和普通多任务脚本，保留作追溯
 ├── data/                             # 脑类器官数据
 ├── metadata/                         # 统一图像/对象级 metadata manifest
 ├── models/                           # 模型权重，不上传 GitHub
@@ -139,9 +132,9 @@ organoid_project/
 三组数据默认路径：
 
 ```text
-/Users/zhaozhihe/Desktop/2026surf/Final_Organoids_Dataset人小肠
-/Users/zhaozhihe/Desktop/2026surf/organoid_project/data
-/Users/zhaozhihe/Desktop/2026surf/OrganoidDataset小鼠小肠
+/Users/zhaozhihe/Final_Organoids_Dataset人小肠
+/Users/zhaozhihe/organoid_project/data
+/Users/zhaozhihe/OrganoidDataset小鼠小肠
 ```
 
 ---
@@ -179,7 +172,7 @@ metadata/
 ## 环境安装
 
 ```bash
-cd /Users/zhaozhihe/Desktop/2026surf/organoid_project
+cd /Users/zhaozhihe/organoid_project
 pip install -r requirements.txt
 ```
 
@@ -201,9 +194,35 @@ PY
 
 ---
 
-## 推荐方案：Attention-MIL 多任务训练
+## 主任务训练：肠道四分类 baseline
 
-### 为什么推荐
+当前最重要的实验是人小肠 + 小鼠小肠统一四分类：
+
+```bash
+python train_intestinal_subtype.py \
+  --backbone efficientnet_b0 \
+  --epochs 20 \
+  --image-size 224 \
+  --batch-size 32 \
+  --run-name intestine_subtype_b0
+```
+
+输出位置：
+
+```text
+models/intestine_subtype_b0_best.pth
+logs/intestine_subtype_b0/metrics.json
+logs/intestine_subtype_b0/confusion_matrix.png
+logs/intestine_subtype_b0/result_summary.md
+```
+
+本地当前没有上传 `.pth` 权重文件；GitHub 只保留指标、混淆矩阵和结果摘要。
+
+---
+
+## 对照方案：Attention-MIL 多任务训练
+
+### 为什么作为对照
 
 你的项目有三个典型困难：
 
@@ -308,49 +327,6 @@ logs/mil_multitask_metrics.json        # 每轮指标、每组数据指标、混
 - `tissue_acc`：模型是否能区分三组数据来源。
 
 不要只看普通 accuracy。样本不均衡时，accuracy 可能会误导。
-
----
-
-## 单数据集 baseline
-
-如果只训练脑类器官数据集：
-
-```bash
-python train.py
-```
-
-该脚本使用：
-
-- `config.py` 中的参数
-- `dataset.py` 的单数据集加载器
-- `model.py` 的分类模型
-- 5-fold group cross validation
-
-模型保存到：
-
-```text
-models/best_model_fold1.pth
-models/best_model_fold2.pth
-...
-```
-
-评估：
-
-```bash
-python evaluate.py
-```
-
----
-
-## 普通三数据集多任务训练
-
-如果想不用 MIL，直接训练三组数据：
-
-```bash
-python multi_train.py
-```
-
-这个版本会直接把图像 resize 后输入模型。它可以作为对照实验，但在切割不精确时，推荐优先使用 `train_mil_multitask.py`。
 
 ---
 

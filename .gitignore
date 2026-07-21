@@ -11,6 +11,7 @@ __pycache__/
 
 # 日志
 logs/*.png
+logs/smoke*_mil_multitask_metrics.json
 logs/discovery*/
 logs/**/cluster_examples/
 logs/**/*.npy
